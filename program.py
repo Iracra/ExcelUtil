@@ -14,7 +14,7 @@ class App:
         self.root.geometry("800x300")  # Finestra leggermente più larga
         self.root.set_theme("arc")  # Usa un tema moderno (es. "arc", "equilux", "breeze")
 
-        # Colore di sfondo sfumato (ispirato a SAP Fiori/Windows)
+      
         self.root.configure(background="#f0f0f0")  # Grigio chiaro per lo sfondo
 
         # Stile personalizzato per i widget
