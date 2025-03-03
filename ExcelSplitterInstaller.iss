@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ExcelSplitter"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.5"
 #define MyAppExeName "program.exe"
 #define MyAppAssocName MyAppName + ""
 #define MyAppAssocExt ""
@@ -11,7 +11,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{704E249F-F563-4886-BCAC-AE8CCDE47737}
+AppId={{02537C69-FB3C-45D0-80A1-43F7094196DF}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -29,7 +29,7 @@ ChangesAssociations=yes
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
-OutputBaseFilename=ExcelSplitter
+OutputBaseFilename=ExcelSplitterSetup
 SetupIconFile=C:\Users\andrea\Desktop\Programmino per excel\spreadsheet.ico
 SolidCompression=yes
 WizardStyle=modern
