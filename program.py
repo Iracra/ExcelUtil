@@ -1,154 +1,163 @@
+import sys
 import pandas as pd
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-from ttkthemes import ThemedTk  # Per temi moderni
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QFileDialog,
+    QMessageBox,
+    QProgressBar,
+)
+from PyQt6.QtCore import Qt, QTimer
 import os
 import constants
 
 PROVINCE = globals()['constants'].PROVINCE
 
-class App:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Elaborazione File Excel")
-        self.root.geometry("800x300")  # Finestra leggermente più larga
-        self.root.set_theme("arc")  # Usa un tema moderno (es. "arc", "equilux", "breeze")
 
-      
-        self.root.configure(background="#f0f0f0")  # Grigio chiaro per lo sfondo
+class App(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Elaborazione File Excel")
+        self.setGeometry(100, 100, 800, 300)
 
-        # Stile personalizzato per i widget
-        self.style = ttk.Style()
-        self.style.configure("TButton", font=("Segoe UI", 10), padding=10, width=20)  # Pulsanti più larghi
-        self.style.configure("TLabel", font=("Segoe UI", 10), background="#f0f0f0")
-        self.style.configure("TEntry", font=("Segoe UI", 10), padding=5)
+        # Main widget and layout
+        self.main_widget = QWidget()
+        self.setCentralWidget(self.main_widget)
+        self.layout = QVBoxLayout(self.main_widget)
 
-        # Frame principale
-        self.main_frame = ttk.Frame(root, padding="20")
-        self.main_frame.pack(fill="both", expand=True)
+        # Label for file selection
+        self.label = QLabel("Seleziona i file Excel da elaborare")
+        self.label.setStyleSheet("font-size: 12pt;")
+        self.layout.addWidget(self.label)
 
-        # Label e pulsante per selezione file
-        self.label = ttk.Label(self.main_frame, text="Seleziona i file Excel da elaborare", font=("Segoe UI", 12))
-        self.label.grid(row=0, column=0, columnspan=3, pady=10)
+        # Button to select files
+        self.select_button = QPushButton("Seleziona File")
+        self.select_button.clicked.connect(self.select_files)
+        self.layout.addWidget(self.select_button)
 
-        # Pulsante "Seleziona File"
-        self.select_button = ttk.Button(self.main_frame, text="Seleziona File", command=self.select_files)
-        self.select_button.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        # Label to display selected files
+        self.selected_files_label = QLabel("Nessun file selezionato")
+        self.selected_files_label.setStyleSheet("color: gray;")
+        self.layout.addWidget(self.selected_files_label)
 
-        # Label per visualizzare i file selezionati
-        self.selected_files_label = ttk.Label(self.main_frame, text="Nessun file selezionato", foreground="gray")
-        self.selected_files_label.grid(row=1, column=1, columnspan=2, padx=10, pady=5, sticky="w")
+        # Button to select output folder
+        self.output_button = QPushButton("Seleziona Cartella")
+        self.output_button.clicked.connect(self.select_output)
+        self.layout.addWidget(self.output_button)
 
-        # Pulsante "Seleziona Cartella"
-        self.output_button = ttk.Button(self.main_frame, text="Seleziona Cartella", command=self.select_output)
-        self.output_button.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        # Label to display selected output folder
+        self.selected_output_label = QLabel("Nessuna cartella selezionata")
+        self.selected_output_label.setStyleSheet("color: gray;")
+        self.layout.addWidget(self.selected_output_label)
 
-        # Label per visualizzare la cartella di output selezionata
-        self.selected_output_label = ttk.Label(self.main_frame, text="Nessuna cartella selezionata", foreground="gray")
-        self.selected_output_label.grid(row=2, column=1, columnspan=2, padx=10, pady=5, sticky="w")
+        # Label and input for header row
+        self.header_label = QLabel("Riga di intestazione (Excel):")
+        self.layout.addWidget(self.header_label)
 
-        # Label e campo di input per la riga di intestazione
-        self.header_label = ttk.Label(self.main_frame, text="Riga di intestazione (Excel):", font=("Segoe UI", 10))
-        self.header_label.grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        self.header_entry = QLineEdit()
+        self.header_entry.setText("6")  # Default value (row 6 in Excel = index 5 in Python)
+        self.layout.addWidget(self.header_entry)
 
-        self.header_entry = ttk.Entry(self.main_frame, font=("Segoe UI", 10), width=15)
-        self.header_entry.insert(0, "6")  # Valore di default (riga 6 in Excel = indice 5 in Python)
-        self.header_entry.grid(row=3, column=1, padx=10, pady=10, sticky="w")
+        # Button to start processing
+        self.process_button = QPushButton("Avvia Elaborazione")
+        self.process_button.clicked.connect(self.process_excel)
+        self.layout.addWidget(self.process_button)
 
-        # Pulsante per avviare l'elaborazione
-        self.process_button = ttk.Button(self.main_frame, text="Avvia Elaborazione", command=self.process_excel)
-        self.process_button.grid(row=4, column=0, columnspan=3, pady=20)
-
-        # Variabili per i percorsi
+        # Variables for paths
         self.input_paths = []
         self.output_path = ""
 
     def select_files(self):
-        self.input_paths = filedialog.askopenfilenames(
-            title="Seleziona i file Excel da elaborare",
-            filetypes=[("Excel files", "*.xlsx;*.xls")]
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Seleziona i file Excel da elaborare", "", "Excel files (*.xlsx *.xls)"
         )
-        if self.input_paths:
-            self.selected_files_label.config(text=f"{len(self.input_paths)} file selezionati", foreground="green")
+        if files:
+            self.input_paths = files
+            self.selected_files_label.setText(f"{len(files)} file selezionati")
+            self.selected_files_label.setStyleSheet("color: green;")
 
     def select_output(self):
-        self.output_path = filedialog.askdirectory(title="Seleziona cartella di output")
-        if self.output_path:
-            self.selected_output_label.config(text=f"Output: {self.output_path}", foreground="green")
+        folder = QFileDialog.getExistingDirectory(self, "Seleziona cartella di output")
+        if folder:
+            self.output_path = folder
+            self.selected_output_label.setText(f"Output: {folder}")
+            self.selected_output_label.setStyleSheet("color: green;")
 
     def show_progress_popup(self):
-        """Mostra una finestra popup con la barra di avanzamento."""
-        self.popup = tk.Toplevel(self.root)
-        self.popup.title("Avanzamento")
-        self.popup.geometry("300x100")
+        """Show a progress popup with a progress bar."""
+        self.progress_popup = QMessageBox(self)
+        self.progress_popup.setWindowTitle("Avanzamento")
+        self.progress_popup.setText("Elaborazione in corso...")
 
-        # Barra di avanzamento
-        self.progress = ttk.Progressbar(self.popup, orient="horizontal", length=250, mode="determinate")
-        self.progress.pack(pady=10)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_popup.layout().addWidget(self.progress_bar, 1, 1)
 
-        # Label per la percentuale
-        self.progress_label = ttk.Label(self.popup, text="0% completato", font=("Segoe UI", 10))
-        self.progress_label.pack(pady=5)
+        self.progress_popup.show()
 
     def update_progress(self, value):
-        """Aggiorna la barra di avanzamento e la label della percentuale."""
-        self.progress['value'] = value
-        self.progress_label.config(text=f"{int(value)}% completato")
-        self.popup.update_idletasks()  # Forza l'aggiornamento della finestra popup
+        """Update the progress bar."""
+        self.progress_bar.setValue(int(value))
+        QApplication.processEvents()  # Force UI update
 
     def close_progress_popup(self):
-        """Chiude la finestra popup di avanzamento."""
-        self.popup.destroy()
+        """Close the progress popup."""
+        self.progress_popup.close()
 
     def process_excel(self):
         if not self.input_paths:
-            messagebox.showerror("Errore", "Seleziona i file Excel da elaborare!")
+            QMessageBox.critical(self, "Errore", "Seleziona i file Excel da elaborare!")
             return
         if not self.output_path:
-            messagebox.showerror("Errore", "Seleziona la cartella di output!")
+            QMessageBox.critical(self, "Errore", "Seleziona la cartella di output!")
             return
 
         try:
-            # Mostra la finestra popup di avanzamento
+            # Show progress popup
             self.show_progress_popup()
 
-            # Ottieni la riga di intestazione dall'input dell'utente
-            header_row = int(self.header_entry.get()) - 1  # Converti da riga Excel a indice Python
+            # Get header row from user input
+            header_row = int(self.header_entry.text()) - 1  # Convert from Excel row to Python index
 
-            # Dizionario per accumulare i dati delle province
+            # Dictionary to accumulate province data
             province_data = {code: pd.DataFrame() for code in PROVINCE.keys()}
             unrecognized_data = pd.DataFrame()
 
-            # Elabora i file in sequenza
+            # Process files sequentially
             total_files = len(self.input_paths)
             for i, path in enumerate(self.input_paths):
-                # Aggiorna la barra di avanzamento
+                # Update progress
                 progress_value = (i + 1) / total_files * 100
                 self.update_progress(progress_value)
 
                 df = pd.read_excel(path, header=header_row)
 
-                # Trova colonna 'Provincia'
+                # Find 'Provincia' column
                 provincia_col = next((col for col in df.columns if 'provincia' in col.lower()), None)
                 if not provincia_col:
                     print(f"Attenzione: colonna 'Provincia' non trovata in {os.path.basename(path)}. File saltato.")
                     continue
 
-                # Normalizza codici
+                # Normalize codes
                 df['Codice_Provincia'] = df[provincia_col].astype(str).str.strip().str.upper()
 
-                # Separa dati riconosciuti e non
+                # Separate recognized and unrecognized data
                 mask = df['Codice_Provincia'].isin(PROVINCE.keys())
                 recognized = df[mask]
                 unrecognized = df[~mask]
 
-                # Aggiungi ai dati accumulati
+                # Add to accumulated data
                 for code, group in recognized.groupby('Codice_Provincia'):
                     province_data[code] = pd.concat([province_data[code], group], ignore_index=True)
 
                 unrecognized_data = pd.concat([unrecognized_data, unrecognized], ignore_index=True)
 
-            # Salva i file per provincia
+            # Save files for each province
             for code, df in province_data.items():
                 if not df.empty:
                     nome_provincia = PROVINCE[code]
@@ -159,7 +168,7 @@ class App:
                         engine='openpyxl'
                     )
 
-            # Salva dati non riconosciuti
+            # Save unrecognized data
             if not unrecognized_data.empty:
                 unrecognized_data.to_excel(
                     os.path.join(self.output_path, "000_Non_riconosciute.xlsx"),
@@ -167,23 +176,29 @@ class App:
                     engine='openpyxl'
                 )
 
-            # Statistiche
+            # Statistics
             total_recognized = sum(len(df) for df in province_data.values())
-            messagebox.showinfo("Completato", f"Elaborazione completata!\nFile salvati in: {self.output_path}\n"
-                                            f"Totale righe elaborate: {total_recognized}\n"
-                                            f"Righe non riconosciute: {len(unrecognized_data)}")
+            QMessageBox.information(
+                self,
+                "Completato",
+                f"Elaborazione completata!\nFile salvati in: {self.output_path}\n"
+                f"Totale righe elaborate: {total_recognized}\n"
+                f"Righe non riconosciute: {len(unrecognized_data)}",
+            )
 
-            # Chiudi la finestra popup
+            # Close progress popup
             self.close_progress_popup()
 
         except ValueError:
-            messagebox.showerror("Errore", "Inserisci un numero valido per la riga di intestazione!")
+            QMessageBox.critical(self, "Errore", "Inserisci un numero valido per la riga di intestazione!")
             self.close_progress_popup()
         except Exception as e:
-            messagebox.showerror("Errore", f"Errore durante l'elaborazione: {str(e)}")
+            QMessageBox.critical(self, "Errore", f"Errore durante l'elaborazione: {str(e)}")
             self.close_progress_popup()
 
+
 if __name__ == "__main__":
-    root = ThemedTk(theme="arc")  # Usa un tema moderno
-    app = App(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    window = App()
+    window.show()
+    sys.exit(app.exec())
