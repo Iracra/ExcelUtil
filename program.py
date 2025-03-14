@@ -14,9 +14,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 import os
-import constants
 
-PROVINCE = globals()['constants'].PROVINCE
+# Importing the province mapping from constants.py
+from constants import PROVINCE
 
 
 class App(QMainWindow):
@@ -124,9 +124,8 @@ class App(QMainWindow):
             # Get header row from user input
             header_row = int(self.header_entry.text()) - 1  # Convert from Excel row to Python index
 
-            # Dictionary to accumulate province data
-            province_data = {code: pd.DataFrame() for code in PROVINCE.keys()}
-            unrecognized_data = pd.DataFrame()
+            # Total file count
+            total_files_processed = 0
 
             # Process files sequentially
             total_files = len(self.input_paths)
@@ -137,67 +136,54 @@ class App(QMainWindow):
 
                 df = pd.read_excel(path, header=header_row, na_values=['', 'N/A', 'NaN', 'nan', 'None'], keep_default_na=False)
 
+                # Find 'RegioneResidenza' column
+                regione_col = next((col for col in df.columns if 'regione' in col.lower()), None)
+                if not regione_col:
+                    print(f"Attenzione: colonna 'RegioneResidenza' non trovata in {os.path.basename(path)}. File saltato.")
+                    continue
+
+                # Extract region and normalize
+                df['Regione'] = df[regione_col].str.strip().str.capitalize()
+
                 # Find 'Provincia' column
                 provincia_col = next((col for col in df.columns if 'provincia' in col.lower()), None)
                 if not provincia_col:
                     print(f"Attenzione: colonna 'Provincia' non trovata in {os.path.basename(path)}. File saltato.")
                     continue
-                
-                print(df[provincia_col].unique()) 
-                # Normalize codes
-                df['Codice_Provincia'] = df[provincia_col].astype(str).str.strip().str.upper()
-                print(df['Codice_Provincia'].unique()) 
 
-                # Separate recognized and unrecognized data
-                mask = df['Codice_Provincia'].isin(PROVINCE.keys())
-                recognized = df[mask]
-                unrecognized = df[~mask]
+                # Process data by region and province
+                for regione, group in df.groupby('Regione'):
+                    region_folder = os.path.join(self.output_path, regione)
+                    os.makedirs(region_folder, exist_ok=True)
 
-                # Add to accumulated data
-                for code, group in recognized.groupby('Codice_Provincia'):
-                    province_data[code] = pd.concat([province_data[code], group], ignore_index=True)
+                    for provincia, sub_group in group.groupby(provincia_col):
+                        # Use the PROVINCE mapping to get the full name of the province
+                        provincia_full_name = PROVINCE.get(provincia, provincia)  # Fallback to provincia if not found
 
-                unrecognized_data = pd.concat([unrecognized_data, unrecognized], ignore_index=True)
+                        # Prepare the file name
+                        safe_name = f"{provincia_full_name}.xlsx"
 
-            # Save files for each province
-            for code, df in province_data.items():
-                if not df.empty:
-                    nome_provincia = PROVINCE[code]
-                    safe_name = nome_provincia.replace(" ", "_").replace("'", "")
-                    
-                    # Drop the 'Codice_Provincia' column before saving
-                    df_to_save = df.drop(columns=['Codice_Provincia'], errors='ignore')
+                        # Save the file in the respective region folder (without subfolders for provinces)
+                        sub_group.to_excel(
+                            os.path.join(region_folder, safe_name),
+                            index=False,
+                            header=True,  # Include header in the output file
+                            engine='openpyxl'
+                        )
 
-                    df_to_save.to_excel(
-                        os.path.join(self.output_path, f"{safe_name}.xlsx"),
-                        index=False,
-                        header=False,  # Do not include header in the output file
-                        engine='openpyxl'
-                    )
+                        # Update total files processed
+                        total_files_processed += 1
 
-            # Save unrecognized data
-            if not unrecognized_data.empty:
-                df_unrecognized_to_save = unrecognized_data.drop(columns=['Codice_Provincia'], errors='ignore')
+            # Close progress popup
+            self.close_progress_popup()
 
-                df_unrecognized_to_save.to_excel(
-                    os.path.join(self.output_path, "000_Non_riconosciute.xlsx"),
-                    index=False,
-                    header=False,  # Do not include header in the output file
-                    engine='openpyxl'
-                )
-
-            # Statistics
-            total_recognized = sum(len(df) for df in province_data.values())
+            # Show completion message
             QMessageBox.information(
                 self,
                 "Completato",
                 f"Elaborazione completata!\nFile salvati in: {self.output_path}\n"
-                f"Totale righe elaborate: {total_recognized}\n"
-                f"Righe non riconosciute: {len(unrecognized_data)}",
+                f"Totale file elaborati: {total_files_processed}",
             )
-
-            # Close progress popup
-            self.close_progress_popup()
 
         except ValueError:
             QMessageBox.critical(self, "Errore", "Inserisci un numero valido per la riga di intestazione!")
