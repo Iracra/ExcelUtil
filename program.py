@@ -167,7 +167,7 @@ class App(QMainWindow):
                         sub_group.to_excel(
                             os.path.join(region_folder, safe_name),
                             index=False,
-                            header=True,  # Include header in the output file
+                            header=False,  # Include header in the output file
                             engine='openpyxl'
                         )
 
