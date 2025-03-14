@@ -135,16 +135,18 @@ class App(QMainWindow):
                 progress_value = (i + 1) / total_files * 100
                 self.update_progress(progress_value)
 
-                df = pd.read_excel(path, header=header_row)
+                df = pd.read_excel(path, header=header_row, na_values=['', 'N/A', 'NaN', 'nan', 'None'] , keep_default_na=False)
 
                 # Find 'Provincia' column
                 provincia_col = next((col for col in df.columns if 'provincia' in col.lower()), None)
                 if not provincia_col:
                     print(f"Attenzione: colonna 'Provincia' non trovata in {os.path.basename(path)}. File saltato.")
                     continue
-
+                
+                print(df[provincia_col].unique()) 
                 # Normalize codes
                 df['Codice_Provincia'] = df[provincia_col].astype(str).str.strip().str.upper()
+                print(df['Codice_Provincia'].unique()) 
 
                 # Separate recognized and unrecognized data
                 mask = df['Codice_Provincia'].isin(PROVINCE.keys())
