@@ -135,7 +135,7 @@ class App(QMainWindow):
                 progress_value = (i + 1) / total_files * 100
                 self.update_progress(progress_value)
 
-                df = pd.read_excel(path, header=header_row, na_values=['', 'N/A', 'NaN', 'nan', 'None'] , keep_default_na=False)
+                df = pd.read_excel(path, header=header_row, na_values=['', 'N/A', 'NaN', 'nan', 'None'], keep_default_na=False)
 
                 # Find 'Provincia' column
                 provincia_col = next((col for col in df.columns if 'provincia' in col.lower()), None)
@@ -164,17 +164,25 @@ class App(QMainWindow):
                 if not df.empty:
                     nome_provincia = PROVINCE[code]
                     safe_name = nome_provincia.replace(" ", "_").replace("'", "")
-                    df.to_excel(
+                    
+                    # Drop the 'Codice_Provincia' column before saving
+                    df_to_save = df.drop(columns=['Codice_Provincia'], errors='ignore')
+
+                    df_to_save.to_excel(
                         os.path.join(self.output_path, f"{safe_name}.xlsx"),
                         index=False,
+                        header=False,  # Do not include header in the output file
                         engine='openpyxl'
                     )
 
             # Save unrecognized data
             if not unrecognized_data.empty:
-                unrecognized_data.to_excel(
+                df_unrecognized_to_save = unrecognized_data.drop(columns=['Codice_Provincia'], errors='ignore')
+
+                df_unrecognized_to_save.to_excel(
                     os.path.join(self.output_path, "000_Non_riconosciute.xlsx"),
                     index=False,
+                    header=False,  # Do not include header in the output file
                     engine='openpyxl'
                 )
 
