@@ -139,7 +139,10 @@ class App(QMainWindow):
                 # Find 'RegioneResidenza' column
                 regione_col = next((col for col in df.columns if 'regione' in col.lower()), None)
                 if not regione_col:
-                    print(f"Attenzione: colonna 'RegioneResidenza' non trovata in {os.path.basename(path)}. File saltato.")
+                    print(f"Attenzione: colonna 'RegioneResidenza' non trovata in {os.path.basename(path)}. File salvato nella cartella 'Non trovati'.")
+                    non_trovati_folder = os.path.join(self.output_path, "Non trovati")
+                    os.makedirs(non_trovati_folder, exist_ok=True)
+                    df.to_excel(os.path.join(non_trovati_folder, os.path.basename(path)), index=False, engine='openpyxl')
                     continue
 
                 # Extract region and normalize
@@ -148,7 +151,10 @@ class App(QMainWindow):
                 # Find 'Provincia' column
                 provincia_col = next((col for col in df.columns if 'provincia' in col.lower()), None)
                 if not provincia_col:
-                    print(f"Attenzione: colonna 'Provincia' non trovata in {os.path.basename(path)}. File saltato.")
+                    print(f"Attenzione: colonna 'Provincia' non trovata in {os.path.basename(path)}. File salvato nella cartella 'Non trovati'.")
+                    non_trovati_folder = os.path.join(self.output_path, "Non trovati")
+                    os.makedirs(non_trovati_folder, exist_ok=True)
+                    df.to_excel(os.path.join(non_trovati_folder, os.path.basename(path)), index=False, engine='openpyxl')
                     continue
 
                 # Process data by region and province
